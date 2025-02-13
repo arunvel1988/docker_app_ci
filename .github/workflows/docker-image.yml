@@ -21,7 +21,7 @@ jobs:
       run: |        
      
         docker build . --file Dockerfile --tag arunvel1988/devops-ci-demo-2026:v1
-        docker login -u $USER --password-stdin $PASS        
+        echo $PASS | docker login -u $USER --password-stdin       
         docker push arunvel1988/devops-ci-demo-2026:v1
     
         
