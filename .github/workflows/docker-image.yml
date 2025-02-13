@@ -7,23 +7,24 @@ on:
     branches: [ main ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
-    - name: Build the Docker image
+
+    - name: Build and Push Docker Image
       env:
         USER: ${{ secrets.USER }}
-        PASS: ${{ secrets.PASS }}   
-      run: |        
-     
-        docker build . --file Dockerfile --tag arunvel1988/devops-ci-demo-2026:v1
-        echo $PASS | docker login -u $USER --password-stdin       
-        docker push arunvel1988/devops-ci-demo-2026:v1
-    
+        PASS: ${{ secrets.PASS }}
+      run: |
+        COMMIT_HASH=$(git rev-parse --short HEAD)
+        TIMESTAMP=$(date +%Y%m%d%H%M%S)
+        IMAGE_NAME=arunvel1988/devops-ci-demo-2026:${COMMIT_HASH}_${TIMESTAMP}
         
- 
-
+        echo "Building Docker image with tag $IMAGE_NAME"
+        docker build . --file Dockerfile --tag $IMAGE_NAME
+        
+        echo $PASS | docker login -u $USER --password-stdin
+        docker push $IMAGE_NAME
+        
+        echo "Docker image pushed: $IMAGE_NAME"
