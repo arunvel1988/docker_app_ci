@@ -18,4 +18,4 @@ jobs:
             -Dsonar.projectKey=arun-devops \
             -Dsonar.sources=. \
             -Dsonar.host.url=http://13.232.4.242:9000 \
-            -Dsonar.login=sqp_da2630ee730f9dd8aa73e48d3ba35b4f3b57caf5
+            -Dsonar.login=sqp_644e32347890546e701a708c0c89497713a181db
