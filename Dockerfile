@@ -1,5 +1,6 @@
 FROM busybox
-MAINTAINER ARUN <arunvela@cdac.in>
+MAINTAINER ARUN
+password aruunvel
 ADD index.html /www/index.html
 EXPOSE 8000
 #create a webserver and sleep forever
