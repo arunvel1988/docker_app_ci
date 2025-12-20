@@ -1,6 +1,5 @@
 FROM busybox
 MAINTAINER ARUN
-password aruunvel
 ADD index.html /www/index.html
 EXPOSE 8000
 #create a webserver and sleep forever
