@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout Code
+    # 1️⃣ Checkout Code
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # SonarQube Source Code Scan (SAST) - DOCKER FIXED
+    # 2️⃣ SonarQube Source Code Scan (SAST) – DOCKER BASED (FIXED)
     - name: SonarQube Analysis
       run: |
         docker run --rm \
@@ -25,21 +25,21 @@ jobs:
           -Dsonar.sources=. \
           -Dsonar.host.url=http://34.47.250.33:9821 \
           -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-          -Dsonar.scanner.metadataFilePath=.scannerwork/report-task.txt
+          -Dsonar.scanner.metadataFilePath=/usr/src/.scannerwork/report-task.txt
 
-    # SonarQube Quality Gate (NOW IT WILL FIND report-task.txt)
+    # 3️⃣ SonarQube Quality Gate (FAIL PIPELINE IF GATE FAILS)
     - name: SonarQube Quality Gate
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: http://34.47.250.33:9821
 
-    # Build Docker Image
+    # 4️⃣ Build Docker Image
     - name: Build Docker Image
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
 
-    # Scan Docker Image (Trivy – FAIL ON HIGH/CRITICAL)
+    # 5️⃣ Scan Docker Image (Trivy – FAIL ON HIGH/CRITICAL)
     - name: Trivy Image Scan
       uses: aquasecurity/trivy-action@master
       with:
@@ -47,13 +47,13 @@ jobs:
         severity: CRITICAL,HIGH
         exit-code: 1
 
-    # Login to Docker Hub
+    # 6️⃣ Login to Docker Hub
     - name: Docker Login
       run: |
         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
           -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-    # Push Docker Image
+    # 7️⃣ Push Docker Image
     - name: Push Docker Image
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/devops-app:latest
