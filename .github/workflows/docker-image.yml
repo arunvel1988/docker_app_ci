@@ -22,7 +22,7 @@ jobs:
           sonarsource/sonar-scanner-cli \
           -Dsonar.projectKey=arun-devops \
           -Dsonar.sources=. \
-          -Dsonar.host.url=http://13.232.4.242:9000 \
+          -Dsonar.host.url=http://34.47.250.33:9821/ \
           -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
     # SonarQube Quality Gate (FAIL PIPELINE IF FAILED)
@@ -30,7 +30,7 @@ jobs:
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: http://13.232.4.242:9000
+        SONAR_HOST_URL: http://34.47.250.33:9821/
 
     # Build Docker Image
     - name: Build Docker Image
