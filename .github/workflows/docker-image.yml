@@ -14,23 +14,25 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # SonarQube Source Code Scan (SAST)
+    # SonarQube Source Code Scan (SAST) - DOCKER FIXED
     - name: SonarQube Analysis
       run: |
         docker run --rm \
           -v "$(pwd):/usr/src" \
+          -w /usr/src \
           sonarsource/sonar-scanner-cli \
           -Dsonar.projectKey=arun-devops \
           -Dsonar.sources=. \
-          -Dsonar.host.url=http://34.47.250.33:9821/ \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.host.url=http://34.47.250.33:9821 \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.scanner.metadataFilePath=.scannerwork/report-task.txt
 
-    # SonarQube Quality Gate (FAIL PIPELINE IF FAILED)
+    # SonarQube Quality Gate (NOW IT WILL FIND report-task.txt)
     - name: SonarQube Quality Gate
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: http://34.47.250.33:9821/
+        SONAR_HOST_URL: http://34.47.250.33:9821
 
     # Build Docker Image
     - name: Build Docker Image
