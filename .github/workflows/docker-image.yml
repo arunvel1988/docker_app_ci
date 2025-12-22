@@ -14,16 +14,17 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # 2️⃣ SonarQube Source Code Scan (SAST) – DOCKER BASED (FIXED)
+    # 2️⃣ SonarQube Scan (Docker, PERMISSION FIXED)
     - name: SonarQube Analysis
       run: |
         docker run --rm \
+          --user root \
           -v "$(pwd):/usr/src" \
           -w /usr/src \
           sonarsource/sonar-scanner-cli \
           -Dsonar.projectKey=arun-devops \
           -Dsonar.sources=. \
-          -Dsonar.host.url=http://34.47.250.33:9294 \
+          -Dsonar.host.url=http://34.47.250.33:9821 \
           -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
           -Dsonar.scanner.metadataFilePath=/usr/src/.scannerwork/report-task.txt
 
@@ -32,14 +33,14 @@ jobs:
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: http://34.47.250.33:9294
+        SONAR_HOST_URL: http://34.47.250.33:9821
 
     # 4️⃣ Build Docker Image
     - name: Build Docker Image
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
 
-    # 5️⃣ Scan Docker Image (Trivy – FAIL ON HIGH/CRITICAL)
+    # 5️⃣ Scan Docker Image (Trivy)
     - name: Trivy Image Scan
       uses: aquasecurity/trivy-action@master
       with:
@@ -47,7 +48,7 @@ jobs:
         severity: CRITICAL,HIGH
         exit-code: 1
 
-    # 6️⃣ Login to Docker Hub
+    # 6️⃣ Docker Login
     - name: Docker Login
       run: |
         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
