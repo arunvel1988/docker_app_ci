@@ -10,22 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # -------------------------------
     # 1️⃣ Checkout Code
-    # -------------------------------
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # -------------------------------
     # 2️⃣ Build Docker Image
-    # -------------------------------
     - name: Build Docker Image
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
 
-    # -------------------------------
     # 3️⃣ Trivy Scan (JSON OUTPUT)
-    # -------------------------------
     - name: Trivy Image Scan (JSON)
       run: |
         docker run --rm \
@@ -37,20 +31,16 @@ jobs:
           --output /data/trivy-report.json \
           ubuntu
 
-    # -------------------------------
-    # 3.1️⃣ Add Pipeline ID and Timestamp to Trivy JSON
-    # -------------------------------
+    # 3.1️⃣ Add Pipeline ID + Timestamp
     - name: Add metadata to Trivy JSON
       run: |
         TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         PIPELINE_ID="run-$(date -u +'%Y%m%d%H%M%S')"
         jq --arg ts "$TIMESTAMP" --arg pid "$PIPELINE_ID" \
            '{pipeline_id: $pid, timestamp: $ts, vulnerabilities: .}' \
-           trivy-report.json > trivy-report-wrapped.json
+           /data/trivy-report.json > /data/trivy-report-wrapped.json
 
-    # -------------------------------
     # 4️⃣ Prepare Kafka SSL Certificates
-    # -------------------------------
     - name: Prepare Kafka SSL certs
       run: |
         mkdir -p certs
@@ -58,14 +48,12 @@ jobs:
         echo "${{ secrets.KAFKA_CLIENT_CERT }}" | tr -d '\r' > certs/service.cert
         echo "${{ secrets.KAFKA_CLIENT_KEY }}" | tr -d '\r' > certs/service.key
         chmod 600 certs/*
-        ls -l certs  # Debug: check files exist
+        ls -l certs
 
-    # -------------------------------
-    # 5️⃣ Send Trivy JSON to Aiven Kafka
-    # -------------------------------
+    # 5️⃣ Send Trivy JSON to Kafka
     - name: Send Trivy JSON to Kafka
       run: |
-        cat trivy-report-wrapped.json | docker run --rm -i \
+        cat /data/trivy-report-wrapped.json | docker run --rm -i \
           -v $(pwd)/certs:/certs \
           edenhill/kcat:1.7.1 \
           -P \
@@ -77,17 +65,13 @@ jobs:
           -X ssl.key.location=/certs/service.key \
           -K '\n'
 
-    # -------------------------------
     # 6️⃣ Docker Login
-    # -------------------------------
     - name: Docker Login
       run: |
         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
           -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-    # -------------------------------
     # 7️⃣ Push Docker Image
-    # -------------------------------
     - name: Push Docker Image
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/devops-app:latest
