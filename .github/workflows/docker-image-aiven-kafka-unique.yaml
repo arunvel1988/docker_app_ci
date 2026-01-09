@@ -30,11 +30,11 @@ jobs:
       run: |
         docker run --rm \
           -v /var/run/docker.sock:/var/run/docker.sock \
-          -v $(pwd):/work \
+          -v $(pwd):/data \
           aquasec/trivy:latest image \
           --severity CRITICAL,HIGH,MEDIUM,LOW \
           --format json \
-          --output /work/trivy-report.json \
+          --output /data/trivy-report.json \
           ubuntu
 
     # -------------------------------
@@ -46,7 +46,7 @@ jobs:
         PIPELINE_ID="run-$(date -u +'%Y%m%d%H%M%S')"
         jq --arg ts "$TIMESTAMP" --arg pid "$PIPELINE_ID" \
            '{pipeline_id: $pid, timestamp: $ts, vulnerabilities: .}' \
-           /work/trivy-report.json > /work/trivy-report-wrapped.json
+           trivy-report.json > trivy-report-wrapped.json
 
     # -------------------------------
     # 4️⃣ Prepare Kafka SSL Certificates
@@ -65,7 +65,7 @@ jobs:
     # -------------------------------
     - name: Send Trivy JSON to Kafka
       run: |
-        cat /work/trivy-report-wrapped.json | docker run --rm -i \
+        cat trivy-report-wrapped.json | docker run --rm -i \
           -v $(pwd)/certs:/certs \
           edenhill/kcat:1.7.1 \
           -P \
