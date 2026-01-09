@@ -16,8 +16,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-
-
     # -------------------------------
     # Build Docker Image
     # -------------------------------
@@ -48,19 +46,20 @@ jobs:
         echo "${{ secrets.KAFKA_CA_CERT }}" > certs/ca.pem
         echo "${{ secrets.KAFKA_CLIENT_CERT }}" > certs/service.cert
         echo "${{ secrets.KAFKA_CLIENT_KEY }}" > certs/service.key
+        chmod 600 certs/*
 
     # -------------------------------
     # Send Trivy Report to Aiven Kafka
     # -------------------------------
-    - name: Send Trivy Report to Kafka
+    - name: Send Trivy JSON to Kafka
       run: |
         docker run --rm \
           -v $(pwd)/certs:/certs \
           -v $(pwd):/data \
           edenhill/kcat:1.7.1 \
-          -b ${{ secrets.KAFKA_BROKER }} \
-          -t trivy-security \
           -P \
+          -b arunvel1988-kafka-arunvel1988.e.aivencloud.com:14253 \
+          -t trivy-security \
           -X security.protocol=SSL \
           -X ssl.ca.location=/certs/ca.pem \
           -X ssl.certificate.location=/certs/service.cert \
