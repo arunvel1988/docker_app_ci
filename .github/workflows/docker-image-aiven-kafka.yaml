@@ -1,0 +1,106 @@
+name: DevSecOps CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    # -------------------------------
+    # Checkout Code
+    # -------------------------------
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # -------------------------------
+    # SonarQube Analysis
+    # -------------------------------
+    - name: SonarQube Analysis
+      run: |
+        docker run --rm \
+          --user ${{ vars.USER }} \
+          -v "$(pwd):/usr/src" \
+          -w /usr/src \
+          sonarsource/sonar-scanner-cli \
+          -Dsonar.projectKey=arun-devops \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.scanner.metadataFilePath=/usr/src/.scannerwork/report-task.txt
+
+    # -------------------------------
+    # SonarQube Quality Gate
+    # -------------------------------
+    - name: SonarQube Quality Gate
+      uses: sonarsource/sonarqube-quality-gate-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+
+    # -------------------------------
+    # Build Docker Image
+    # -------------------------------
+    - name: Build Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
+
+    # -------------------------------
+    # Trivy Scan (JSON OUTPUT)
+    # -------------------------------
+    - name: Trivy Image Scan (JSON)
+      run: |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $(pwd):/work \
+          aquasec/trivy:latest image \
+          --severity CRITICAL,HIGH,MEDIUM,LOW \
+          --format json \
+          --output /work/trivy-report.json \
+          ubuntu
+
+    # -------------------------------
+    # Prepare Kafka SSL Certificates
+    # -------------------------------
+    - name: Prepare Kafka SSL certs
+      run: |
+        mkdir -p certs
+        echo "${{ secrets.KAFKA_CA_CERT }}" > certs/ca.pem
+        echo "${{ secrets.KAFKA_CLIENT_CERT }}" > certs/service.cert
+        echo "${{ secrets.KAFKA_CLIENT_KEY }}" > certs/service.key
+
+    # -------------------------------
+    # Send Trivy Report to Aiven Kafka
+    # -------------------------------
+    - name: Send Trivy Report to Kafka
+      run: |
+        docker run --rm \
+          -v $(pwd)/certs:/certs \
+          -v $(pwd):/data \
+          edenhill/kcat:1.7.1 \
+          -b ${{ secrets.KAFKA_BROKER }} \
+          -t trivy-security \
+          -P \
+          -X security.protocol=SSL \
+          -X ssl.ca.location=/certs/ca.pem \
+          -X ssl.certificate.location=/certs/service.cert \
+          -X ssl.key.location=/certs/service.key \
+          /data/trivy-report.json
+
+    # -------------------------------
+    # Docker Login
+    # -------------------------------
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    # -------------------------------
+    # Push Docker Image
+    # -------------------------------
+    - name: Push Docker Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/devops-app:latest
