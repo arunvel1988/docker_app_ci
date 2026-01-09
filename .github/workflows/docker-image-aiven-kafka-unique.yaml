@@ -1,0 +1,95 @@
+name: DevSecOps CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    # -------------------------------
+    # 1️⃣ Checkout Code
+    # -------------------------------
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # -------------------------------
+    # 2️⃣ Build Docker Image
+    # -------------------------------
+    - name: Build Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
+
+    # -------------------------------
+    # 3️⃣ Trivy Scan (JSON OUTPUT)
+    # -------------------------------
+    - name: Trivy Image Scan (JSON)
+      run: |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $(pwd):/work \
+          aquasec/trivy:latest image \
+          --severity CRITICAL,HIGH,MEDIUM,LOW \
+          --format json \
+          --output /work/trivy-report.json \
+          ubuntu
+
+    # -------------------------------
+    # 3.1️⃣ Add Pipeline ID and Timestamp to Trivy JSON
+    # -------------------------------
+    - name: Add metadata to Trivy JSON
+      run: |
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        PIPELINE_ID="run-$(date -u +'%Y%m%d%H%M%S')"
+        jq --arg ts "$TIMESTAMP" --arg pid "$PIPELINE_ID" \
+           '{pipeline_id: $pid, timestamp: $ts, vulnerabilities: .}' \
+           /work/trivy-report.json > /work/trivy-report-wrapped.json
+
+    # -------------------------------
+    # 4️⃣ Prepare Kafka SSL Certificates
+    # -------------------------------
+    - name: Prepare Kafka SSL certs
+      run: |
+        mkdir -p certs
+        # Remove Windows-style line endings, ensure PEM is correct
+        echo "${{ secrets.KAFKA_CA_CERT }}" | tr -d '\r' > certs/ca.pem
+        echo "${{ secrets.KAFKA_CLIENT_CERT }}" | tr -d '\r' > certs/service.cert
+        echo "${{ secrets.KAFKA_CLIENT_KEY }}" | tr -d '\r' > certs/service.key
+        chmod 600 certs/*
+        ls -l certs  # Debug: check files exist
+
+    # -------------------------------
+    # 5️⃣ Send Trivy JSON to Aiven Kafka
+    # -------------------------------
+    - name: Send Trivy JSON to Kafka
+      run: |
+        docker run --rm \
+          -v $(pwd)/certs:/certs \
+          -v $(pwd):/data \
+          edenhill/kcat:1.7.1 \
+          -P \
+          -b arunvel1988-kafka-arunvel1988.e.aivencloud.com:14253 \
+          -t trivy-security \
+          -X security.protocol=SSL \
+          -X ssl.ca.location=/certs/ca.pem \
+          -X ssl.certificate.location=/certs/service.cert \
+          -X ssl.key.location=/certs/service.key \
+          /data/trivy-report-wrapped.json
+
+    # -------------------------------
+    # 6️⃣ Docker Login
+    # -------------------------------
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    # -------------------------------
+    # 7️⃣ Push Docker Image
+    # -------------------------------
+    - name: Push Docker Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/devops-app:latest
