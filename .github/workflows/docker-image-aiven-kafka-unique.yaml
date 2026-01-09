@@ -65,8 +65,7 @@ jobs:
     # -------------------------------
     - name: Send Trivy JSON to Kafka
       run: |
-        cat /work/trivy-report-wrapped.json | docker run --rm \
-          -i \
+        cat /work/trivy-report-wrapped.json | docker run --rm -i \
           -v $(pwd)/certs:/certs \
           edenhill/kcat:1.7.1 \
           -P \
