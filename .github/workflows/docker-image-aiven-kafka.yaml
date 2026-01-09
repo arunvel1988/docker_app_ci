@@ -11,20 +11,20 @@ jobs:
 
     steps:
     # -------------------------------
-    # 1️⃣ Checkout Code
+    # Checkout Code
     # -------------------------------
     - name: Checkout Code
       uses: actions/checkout@v3
 
     # -------------------------------
-    # 2️⃣ Build Docker Image
+    # Build Docker Image
     # -------------------------------
     - name: Build Docker Image
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
 
     # -------------------------------
-    # 3️⃣ Trivy Scan (JSON OUTPUT)
+    # Trivy Scan (JSON OUTPUT)
     # -------------------------------
     - name: Trivy Image Scan (JSON)
       run: |
@@ -38,7 +38,7 @@ jobs:
           ubuntu
 
     # -------------------------------
-    # 4️⃣ Prepare Kafka SSL Certificates
+    # Prepare Kafka SSL Certificates
     # -------------------------------
     - name: Prepare Kafka SSL certs
       run: |
@@ -51,7 +51,7 @@ jobs:
         ls -l certs  # Debug: check files exist
 
     # -------------------------------
-    # 5️⃣ Send Trivy JSON to Aiven Kafka
+    # Send Trivy JSON to Aiven Kafka
     # -------------------------------
     - name: Send Trivy JSON to Kafka
       run: |
@@ -69,7 +69,7 @@ jobs:
           /data/trivy-report.json
 
     # -------------------------------
-    # 6️⃣ Docker Login
+    # Docker Login
     # -------------------------------
     - name: Docker Login
       run: |
@@ -77,7 +77,7 @@ jobs:
           -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
     # -------------------------------
-    # 7️⃣ Push Docker Image
+    # Push Docker Image
     # -------------------------------
     - name: Push Docker Image
       run: |
