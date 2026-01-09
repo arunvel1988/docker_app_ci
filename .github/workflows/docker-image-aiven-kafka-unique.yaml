@@ -54,7 +54,6 @@ jobs:
     - name: Prepare Kafka SSL certs
       run: |
         mkdir -p certs
-        # Remove Windows-style line endings, ensure PEM is correct
         echo "${{ secrets.KAFKA_CA_CERT }}" | tr -d '\r' > certs/ca.pem
         echo "${{ secrets.KAFKA_CLIENT_CERT }}" | tr -d '\r' > certs/service.cert
         echo "${{ secrets.KAFKA_CLIENT_KEY }}" | tr -d '\r' > certs/service.key
@@ -66,9 +65,9 @@ jobs:
     # -------------------------------
     - name: Send Trivy JSON to Kafka
       run: |
-        docker run --rm \
+        cat /work/trivy-report-wrapped.json | docker run --rm \
+          -i \
           -v $(pwd)/certs:/certs \
-          -v $(pwd):/data \
           edenhill/kcat:1.7.1 \
           -P \
           -b arunvel1988-kafka-arunvel1988.e.aivencloud.com:14253 \
@@ -77,7 +76,7 @@ jobs:
           -X ssl.ca.location=/certs/ca.pem \
           -X ssl.certificate.location=/certs/service.cert \
           -X ssl.key.location=/certs/service.key \
-          /data/trivy-report-wrapped.json
+          -K '\n'
 
     # -------------------------------
     # 6️⃣ Docker Login
