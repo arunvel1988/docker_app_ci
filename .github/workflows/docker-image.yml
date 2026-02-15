@@ -22,7 +22,7 @@ jobs:
           -v "$(pwd):/usr/src" \
           -w /usr/src \
           sonarsource/sonar-scanner-cli \
-          -Dsonar.projectKey=arun-devops \
+          -Dsonar.projectKey=demo \
           -Dsonar.sources=. \
           -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} \
           -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
@@ -58,4 +58,4 @@ jobs:
     # Push Docker Image
     - name: Push Docker Image
       run: |
-        docker push ${{ secrets.DOCKER_USERNAME }}/devops-app:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
