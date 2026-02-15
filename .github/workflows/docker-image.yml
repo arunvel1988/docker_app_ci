@@ -59,7 +59,7 @@ jobs:
           --severity CRITICAL,HIGH,MEDIUM \
           --exit-code 1 \
           --ignore-unfixed \
-          ubuntu
+          alpine
 
     
 
