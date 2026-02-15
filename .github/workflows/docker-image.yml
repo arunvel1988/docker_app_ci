@@ -19,7 +19,7 @@ jobs:
     - name: SonarQube Analysis
       run: |
         docker run --rm \
-          --user $(id -u):$(id -g) \
+          --user ${{ vars.USER }}  \
           -v "$(pwd):/usr/src" \
           -w /usr/src \
           sonarsource/sonar-scanner-cli \
