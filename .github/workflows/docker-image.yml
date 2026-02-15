@@ -79,6 +79,8 @@ jobs:
     # 9. Deploy SAME Immutable Image
     - name: Deploy to Docker Server
       uses: appleboy/ssh-action@v1.0.3
+      env:
+        IMAGE_TAG: ${{ env.IMAGE_TAG }}
       with:
         host: ${{ vars.DEPLOYMENT_SERVER_HOST }}
         username: ${{ vars.DEPLOYMENT_SERVER_USER }}
