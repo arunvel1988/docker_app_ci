@@ -82,7 +82,7 @@ jobs:
 
           echo "Starting new container"
           docker run -d \
-            -p 9898:80 \
+            -p 9898:8000 \
             --name devsecops-app \
             ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
 
