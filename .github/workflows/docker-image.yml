@@ -27,6 +27,7 @@ jobs:
           -Dsonar.sources=. \
           -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} \
           -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.scanner.metadataFilePath=/usr/src/.scannerwork/report-task.txt
 
     # 3. SonarQube Quality Gate
     - name: SonarQube Quality Gate
