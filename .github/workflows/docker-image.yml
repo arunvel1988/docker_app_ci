@@ -59,7 +59,7 @@ jobs:
           --severity CRITICAL,HIGH,MEDIUM \
           --exit-code 1 \
           --ignore-unfixed \
-          arunvel1988/devsecops-app-feb-2026:v1 
+          ${{ vars.IMAGE }}
 
     
 
