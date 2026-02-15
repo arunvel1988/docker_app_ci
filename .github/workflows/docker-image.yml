@@ -41,24 +41,27 @@ jobs:
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest .
 
-    # 5. Trivy Image Scan
+    
+
+    # 5. Docker Login
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    # 6. Push Docker Image
+    - name: Push Docker Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
+
+
+    # 7. Trivy Image Scan
     - name: Trivy Image Scan
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
         severity: CRITICAL,HIGH,MEDIUM
         exit-code: 1
-
-    # 6. Docker Login
-    - name: Docker Login
-      run: |
-        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
-          -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-    # 7. Push Docker Image
-    - name: Push Docker Image
-      run: |
-        docker push ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
 
     # 8. Deploy to Local Server via SSH (ngrok)
     - name: Deploy to Docker Server
