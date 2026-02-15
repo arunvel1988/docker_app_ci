@@ -62,9 +62,9 @@ jobs:
         image-ref: arunvel1988/devsecops-app-feb-2026:latest
         severity: CRITICAL,HIGH,MEDIUM
         exit-code: 1
-     env:
-       TRIVY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-       TRIVY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      env:
+        TRIVY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        TRIVY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     # 8. Deploy to Local Server via SSH (ngrok)
     - name: Deploy to Docker Server
