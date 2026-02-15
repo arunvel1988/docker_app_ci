@@ -1,4 +1,4 @@
-name: DevSecOps CI Pipeline
+name: DevSecOps CI-CD Pipeline
 
 on:
   push:
@@ -6,56 +6,80 @@ on:
       - main
 
 jobs:
-  ci:
+  ci-cd:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout Code
+
+    # 1. Checkout Source Code
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # SonarQube Scan (Docker, PERMISSION FIXED)
+    # 2. SonarQube Analysis
     - name: SonarQube Analysis
       run: |
         docker run --rm \
-          --user ${{ vars.USER }} \
+          --user $(id -u):$(id -g) \
           -v "$(pwd):/usr/src" \
           -w /usr/src \
           sonarsource/sonar-scanner-cli \
           -Dsonar.projectKey=demo \
           -Dsonar.sources=. \
           -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-          -Dsonar.scanner.metadataFilePath=/usr/src/.scannerwork/report-task.txt
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
-    # SonarQube Quality Gate (FAIL PIPELINE IF GATE FAILS)
+    # 3. SonarQube Quality Gate
     - name: SonarQube Quality Gate
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
 
-    # Build Docker Image
+    # 4. Build Docker Image
     - name: Build Docker Image
       run: |
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest .
 
-    # Scan Docker Image (Trivy)
+    # 5. Trivy Image Scan
     - name: Trivy Image Scan
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ubuntu
-        #image-ref: ${{ secrets.DOCKER_USERNAME }}/devops-app:latest
-        severity: CRITICAL,HIGH,MEDIUM,LOW
+        image-ref: ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
+        severity: CRITICAL,HIGH,MEDIUM
         exit-code: 1
 
-    # Docker Login
+    # 6. Docker Login
     - name: Docker Login
       run: |
         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
           -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-    # Push Docker Image
+    # 7. Push Docker Image
     - name: Push Docker Image
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
+
+    # 8. Deploy to Local Server via SSH (ngrok)
+    - name: Deploy to Docker Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOYMENT_SERVER_HOST }}
+        username: ${{ secrets.DEPLOYMENT_SERVER_USER }}
+        key: ${{ secrets.DEPLOYMENT_SSERVER_SSH_KEY }}
+        port: ${{ secrets.DEPLOYMENT_SSERVER_PORT }}
+        script: |
+
+          echo "Pulling latest image"
+          docker pull ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
+
+          echo "Stopping existing container"
+          docker stop devsecops-app || true
+          docker rm devsecops-app || true
+
+          echo "Starting new container"
+          docker run -d \
+            -p 9898:80 \
+            --name devsecops-app \
+            ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:latest
+
+          echo "Deployment completed"
