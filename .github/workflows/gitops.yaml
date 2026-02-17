@@ -79,10 +79,9 @@ jobs:
     # 🆕 10️⃣ Update Image Tag in Manifest
     - name: Update Deployment Image
       run: |
-        cd cd-repo
-
+        ls -ltr
+        cd manifests
         sed -i "s|image: .*|image: ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}|g" deployment.yaml
-
         cat deployment.yaml
 
 
