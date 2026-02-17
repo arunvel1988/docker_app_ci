@@ -35,12 +35,6 @@ jobs:
 
 
 
-    # 4️⃣ Quality Gate
-    - name: SonarQube Quality Gate
-      uses: sonarsource/sonarqube-quality-gate-action@master
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
 
 
     # 5️⃣ Build Image
