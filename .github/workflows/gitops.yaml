@@ -1,0 +1,104 @@
+name: DevSecOps CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci-cd:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # 1️⃣ Checkout CI Repo
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+
+    # 2️⃣ Dynamic Image Tag
+    - name: Set Image Tag
+      run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+
+    # 3️⃣ Sonar Scan
+    - name: SonarQube Analysis
+      run: |
+        docker run --rm \
+          -v "$(pwd):/usr/src" \
+          -w /usr/src \
+          sonarsource/sonar-scanner-cli \
+          -Dsonar.projectKey=demo \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+
+    # 4️⃣ Quality Gate
+    - name: SonarQube Quality Gate
+      uses: sonarsource/sonarqube-quality-gate-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+
+
+    # 5️⃣ Build Image
+    - name: Build Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG} .
+
+
+    # 6️⃣ Trivy Scan
+    - name: Trivy Scan
+      run: |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy:latest image \
+          --severity CRITICAL,HIGH,MEDIUM \
+          --exit-code 1 \
+          ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+
+    # 7️⃣ Docker Login
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+
+    # 8️⃣ Push Image
+    - name: Push Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+
+    # 🆕 9️⃣ Checkout CD Repo
+    - name: Checkout CD Repo
+      uses: actions/checkout@v3
+      with:
+        repository: arunvel1988/docker_app_cd
+        token: ${{ secrets.GH_PAT }}
+        path: cd-repo
+
+
+    # 🆕 10️⃣ Update Image Tag in Manifest
+    - name: Update Deployment Image
+      run: |
+        cd cd-repo
+
+        sed -i "s|image: .*|image: ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}|g" deployment.yaml
+
+        cat deployment.yaml
+
+
+    # 🆕 11️⃣ Commit & Push Changes
+    - name: Commit and Push to CD Repo
+      run: |
+        cd cd-repo
+
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+
+        git add .
+        git commit -m "Updated image tag to ${IMAGE_TAG}"
+        git push
