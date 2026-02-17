@@ -73,7 +73,7 @@ jobs:
       with:
         repository: arunvel1988/docker_app_cd
         token: ${{ secrets.GH_PAT }}
-        path: cd-repo
+        path: cd manifests
 
 
     # 🆕 10️⃣ Update Image Tag in Manifest
