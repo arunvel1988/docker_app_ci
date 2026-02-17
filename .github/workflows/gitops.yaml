@@ -73,14 +73,15 @@ jobs:
       with:
         repository: arunvel1988/docker_app_cd
         token: ${{ secrets.GH_PAT }}
-        path: cd manifests
+        path: cd cd-repo
 
 
     # 🆕 10️⃣ Update Image Tag in Manifest
     - name: Update Deployment Image
       run: |
         ls -ltr
-        cd manifests
+        cd cd-repo/manifests
+        ls -ltr
         sed -i "s|image: .*|image: ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}|g" deployment.yaml
         cat deployment.yaml
 
