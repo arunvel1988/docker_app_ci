@@ -8,6 +8,9 @@ on:
 jobs:
   ci-cd:
     runs-on: ubuntu-latest
+    environment:
+      name: prod
+
 
     steps:
 
