@@ -1,0 +1,115 @@
+name: DevSecOps CI Pipeline (Build + Scan + Sign + SBOM + SCA)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci-build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # Checkout CI Repo
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Dynamic Image Tag
+    - name: Set Image Tag
+      run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+    # Sonar Scan
+    - name: SonarQube Analysis
+      run: |
+        docker run --rm \
+          -v "$(pwd):/usr/src" \
+          -w /usr/src \
+          sonarsource/sonar-scanner-cli \
+          -Dsonar.projectKey=demo \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN}}
+
+    # Build Docker Image
+    - name: Build Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG} .
+
+    # Generate SBOM using Syft
+    - name: Generate SBOM
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
+        syft ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG} -o json > sbom.json
+        cat sbom.json
+
+    # SCA Scan using Grype
+    - name: Scan Image/SBOM for Vulnerabilities
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh
+        grype ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG} --fail-on high,critical
+
+    # Trivy Scan for Extra Layer
+    - name: Trivy Scan for Vulnerabilities
+      run: |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy:latest image \
+          --severity CRITICAL,HIGH,MEDIUM \
+          --exit-code 1 \
+          ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+    # Docker Login
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    # Push Docker Image
+    - name: Push Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+    #Install Cosign
+    - name: Install Cosign
+      run: |
+        curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
+        chmod +x cosign-linux-amd64
+        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+
+    # Sign Docker Image with Cosign
+    - name: Sign Image
+      run: |
+        echo "${{ secrets.COSIGN_KEY }}" > cosign.key
+        cosign sign --key cosign.key ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+    #  Verify Image Signature
+    - name: Verify Image Signature
+      run: |
+        echo "${{ secrets.COSIGN_KEY_PUB }}" > cosign.pub
+        cosign verify --key cosign.pub ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+    # Checkout CD Repo (optional if updating manifests)
+    - name: Checkout CD Repo
+      uses: actions/checkout@v3
+      with:
+        repository: arunvel1988/docker_app_cd
+        token: ${{ secrets.GH_PAT }}
+        path: cd-repo
+
+    # Update Image Tag in CD Repo Manifests
+    - name: Update Deployment Image in CD Repo
+      run: |
+        cd cd-repo/manifests
+        sed -i "s|image: .*|image: ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}|g" deployment.yaml
+        cat deployment.yaml
+
+    # Commit & Push Manifest Update
+    - name: Commit and Push Manifest Update
+      run: |
+        cd cd-repo
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git add .
+        git commit -m "Updated image tag to ${IMAGE_TAG}"
+        git push
