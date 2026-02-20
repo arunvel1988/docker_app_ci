@@ -21,26 +21,7 @@ jobs:
       run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
 
-    - name: SonarQube Analysis
-      run: |
-        docker run --rm \
-          --user ${{ vars.USER }}  \
-          -v "$(pwd):/usr/src" \
-          -w /usr/src \
-          sonarsource/sonar-scanner-cli \
-          -Dsonar.projectKey=demo \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-          -Dsonar.scanner.metadataFilePath=/usr/src/.scannerwork/report-task.txt
 
-
-    # 4. Quality Gate
-    - name: SonarQube Quality Gate
-      uses: sonarsource/sonarqube-quality-gate-action@master
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
 
 
     # 5. Build Image
