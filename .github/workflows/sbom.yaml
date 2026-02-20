@@ -42,6 +42,8 @@ jobs:
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
         syft ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG} -o json > sbom.json
         cat sbom.json
+        jq '.artifacts[] | {name: .name, version: .version, type: .type}' sbom.json
+        jq '.artifacts[] | {name: .name, version: .version, licenses: .licenses}' sbom.json
 
     # SCA Scan using Grype
     - name: Scan Image/SBOM for Vulnerabilities
