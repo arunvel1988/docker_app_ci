@@ -1,0 +1,94 @@
+name: DevSecOps CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci-cd:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Checkout Source Code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Generate Immutable Image Tag
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      # Build Docker Image
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG} .
+
+      # Trivy Image Scan
+      - name: Trivy Scan
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v $HOME/.cache:/root/.cache \
+            aquasec/trivy:latest image \
+            --scanners vuln \
+            --severity CRITICAL,HIGH,MEDIUM \
+            --ignore-unfixed \
+            --exit-code 1 \
+            ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+      # Login to Docker Hub
+      - name: Docker Login
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+            -u "${{ secrets.DOCKER_USERNAME }}" \
+            --password-stdin
+
+      # Push Docker Image
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+      # Deploy to EC2
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: 22
+          envs: IMAGE_TAG
+          script: |
+
+            IMAGE=${{ secrets.DOCKER_USERNAME }}/devsecops-app-feb-2026:${IMAGE_TAG}
+
+            echo "Logging into Docker Hub..."
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+              -u "${{ secrets.DOCKER_USERNAME }}" \
+              --password-stdin
+
+            echo "Pulling latest immutable image..."
+            docker pull $IMAGE
+
+            echo "Stopping existing container..."
+            docker stop devsecops-app || true
+
+            echo "Removing existing container..."
+            docker rm devsecops-app || true
+
+            echo "Removing unused images..."
+            docker image prune -f
+
+            echo "Starting new container..."
+            docker run -d \
+              --name devsecops-app \
+              --restart unless-stopped \
+              -p 9898:8000 \
+              $IMAGE
+
+            echo "Running Containers:"
+            docker ps
+
+            echo "Deployment Successful!"
