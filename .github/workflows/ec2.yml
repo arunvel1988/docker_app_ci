@@ -1,4 +1,4 @@
-name: DevSecOps CI-CD Pipeline
+name: DevSecOps CI-CD Pipeline AWS Devops agent
 
 on:
   push:
