@@ -1,4 +1,4 @@
-name: AI AGENT
+name: AI AGENT pipeline
 
 on:
   push:
