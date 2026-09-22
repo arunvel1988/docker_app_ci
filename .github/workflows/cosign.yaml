@@ -3,7 +3,7 @@ name: DevSecOps CI Pipeline (Build + Scan + Sign)
 on:
   push:
     branches:
-      - main
+      - main-1
 
 jobs:
   ci-build:
