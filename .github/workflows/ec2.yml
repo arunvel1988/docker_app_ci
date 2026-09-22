@@ -1,4 +1,4 @@
-name: AI AGENT pipeline
+name: AI AGENT pipeline - FAILURE
 
 on:
   push:
