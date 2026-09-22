@@ -3,7 +3,7 @@ name: DevSecOps CI-CD Pipeline
 on:
   push:
     branches:
-      - main
+      - main-1
 
 jobs:
   ci-cd:
