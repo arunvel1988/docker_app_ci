@@ -1,4 +1,4 @@
-name: DevSecOps CI-CD Pipeline AWS Devops agent sep 2026-1-date
+name: AI AGENT
 
 on:
   push:
