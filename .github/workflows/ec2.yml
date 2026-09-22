@@ -85,7 +85,7 @@ jobs:
             docker run -d \
               --name devsecops-app \
               --restart unless-stopped \
-              -p 9898:8008 \
+              -p 9898:8000 \
               $IMAGE
 
             echo "Running Containers:"
